@@ -1,0 +1,13 @@
+.git
+.gitignore
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+frontend/node_modules/
+frontend/dist/
+backend/.env
+frontend/.env.local
+.env
+.playwright-mcp/
+shuziren-xuqiu.zip

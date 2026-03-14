@@ -1,0 +1,49 @@
+# OS / Editor
+.DS_Store
+.idea/
+.vscode/
+
+# Python
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+!**/.env.example
+backend/.env
+frontend/.env.local
+
+# Playwright / testing artifacts
+.playwright-mcp/
+
+# Archives
+*.zip
+
+# Schema with local credentials
+docs/schema.sql
+
+# Logs
+*.log
+
+# Runtime artifacts
+*.pid
+*.sqlite3
+
+# Private docs with local credentials (do not publish as-is)
+数据库信息.md
+github-Oauth配置.md
+docs/Redis信息.md
+docs/产品需求文档PRD.md
+docs/技术选型文档.md
+大模型API.md
+图片生成（Banana Pro）API.md
+数字人生成API.md
+index-tts-api.md
+硅基流动-语音合成.md
