@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GlassCard } from '../components/GlassCard';
-import { Asset, AssetType, AudioMode } from '../types';
-import { PERFORMANCE_TAGS } from '../constants';
+import { Asset, AssetType, AudioMode, VideoGenerationMode } from '../types';
 import {
   Play, Mic, User as UserIcon, FileText, Wand2, Loader2, Sparkles,
   Edit3, Library, Save, Smile, Zap, Volume2, Waves, X, Search, CheckCircle2, Music, Pause, Upload
@@ -10,8 +9,17 @@ import { useTranslation } from '../App';
 import { useAssets, useProjects } from '../services/hooks';
 import { assetsApi, generationApi } from '../services/api';
 
+type StoryboardFrame = {
+  asset_id: string;
+  scene_index: number;
+  prompt: string;
+  video_prompt?: string;
+  image_url: string;
+};
+
 export const QuickCreate: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const isZh = locale === 'zh';
   const { assets: systemAssets, loading: assetsLoading, refetch: refetchAssets } = useAssets();
   const { createProject } = useProjects();
 
@@ -27,6 +35,7 @@ export const QuickCreate: React.FC = () => {
 
   // UI state
   const [audioMode, setAudioMode] = useState<AudioMode>('tts');
+  const [videoGenerationMode, setVideoGenerationMode] = useState<VideoGenerationMode>('tts_required');
   const [scriptMode, setScriptMode] = useState<'library' | 'editor'>('library');
   const [customScript, setCustomScript] = useState('');
   const [selectedEmotion, setSelectedEmotion] = useState('professional');
@@ -44,6 +53,13 @@ export const QuickCreate: React.FC = () => {
   const [previewAudioUrl, setPreviewAudioUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pickerType, setPickerType] = useState<AssetType | null>(null);
+  const zhStoryboardStyle = '电影感 TikTok 商品广告，真实商业摄影风格';
+  const enStoryboardStyle = 'cinematic TikTok product ad';
+  const [storyboardStyle, setStoryboardStyle] = useState(zhStoryboardStyle);
+  const [isGeneratingStoryboard, setIsGeneratingStoryboard] = useState(false);
+  const [storyboardFrames, setStoryboardFrames] = useState<StoryboardFrame[]>([]);
+  const [selectedStoryboardFrameIds, setSelectedStoryboardFrameIds] = useState<string[]>([]);
+  const [storyboardPreviewFrame, setStoryboardPreviewFrame] = useState<StoryboardFrame | null>(null);
 
   // Voice audio playback state
   const [isVoicePlaying, setIsVoicePlaying] = useState(false);
@@ -83,7 +99,22 @@ export const QuickCreate: React.FC = () => {
     }
     setIsPreviewPlaying(false);
     setPreviewAudioUrl(null);
+    setStoryboardFrames([]);
+    setSelectedStoryboardFrameIds([]);
+    setStoryboardPreviewFrame(null);
   }, [selectedScript, customScript]);
+
+  useEffect(() => {
+    setStoryboardFrames([]);
+    setSelectedStoryboardFrameIds([]);
+    setStoryboardPreviewFrame(null);
+  }, [selectedAvatar]);
+
+  useEffect(() => {
+    setStoryboardFrames([]);
+    setSelectedStoryboardFrameIds([]);
+    setStoryboardPreviewFrame(null);
+  }, [prompt, storyboardStyle]);
 
   useEffect(() => {
     return () => {
@@ -95,6 +126,14 @@ export const QuickCreate: React.FC = () => {
       }
     };
   }, []);
+
+  useEffect(() => {
+    setStoryboardStyle((current) => {
+      if (locale === 'zh' && current === enStoryboardStyle) return zhStoryboardStyle;
+      if (locale === 'en' && current === zhStoryboardStyle) return enStoryboardStyle;
+      return current;
+    });
+  }, [locale]);
 
   const emotions = [
     { id: 'happy', label: t.create.emotions.happy, icon: <Smile className="w-4 h-4" /> },
@@ -113,6 +152,9 @@ export const QuickCreate: React.FC = () => {
   const emotionDimensions = [
     "高兴", "愤怒", "悲伤", "害怕", "厌恶", "忧郁", "惊讶", "平静"
   ];
+  const performanceTags = isZh
+    ? ['😊 友好亲切', '💪 自信有力', '😎 酷感自然', '🎉 兴奋热情', '😐 严肃专业', '🤫 轻声低语']
+    : ['😊 Friendly', '💪 Confident', '😎 Cool', '🎉 Excited', '😐 Serious', '🤫 Whispering'];
 
   const getEmotionPayload = () => {
     if (emotionMode === 'vector') {
@@ -138,6 +180,21 @@ export const QuickCreate: React.FC = () => {
       emotion_mode: 'preset' as const,
       emotion: selectedEmotion,
     };
+  };
+
+  const getCurrentScript = () => {
+    if (scriptMode === 'editor') {
+      return { text: customScript, id: undefined as string | undefined };
+    }
+    return { text: selectedScript?.content || '', id: selectedScript?.id };
+  };
+
+  const toggleStoryboardFrame = (assetId: string) => {
+    setSelectedStoryboardFrameIds((prev) =>
+      prev.includes(assetId)
+        ? prev.filter(id => id !== assetId)
+        : [...prev, assetId]
+    );
   };
 
   const handleEmotionVectorChange = (index: number, value: number) => {
@@ -326,6 +383,34 @@ export const QuickCreate: React.FC = () => {
     }
   };
 
+  const handleGenerateStoryboard = async () => {
+    const { text } = getCurrentScript();
+    if (!text.trim()) {
+      alert(t.create.placeholders.script);
+      return;
+    }
+    setIsGeneratingStoryboard(true);
+    try {
+      const result = await generationApi.generateStoryboard({
+        script_content: text,
+        user_prompt: prompt,
+        style: storyboardStyle,
+        frame_count: 3,
+        aspect_ratio: '9:16',
+        reference_image_url: selectedAvatar?.file_url || undefined,
+        language: locale,
+      });
+      setStoryboardFrames(result.frames);
+      setSelectedStoryboardFrameIds(result.frames.map(frame => frame.asset_id));
+      await refetchAssets();
+    } catch (error: any) {
+      console.error('Storyboard generation failed:', error);
+      alert('Failed to generate storyboard: ' + (error?.message || error));
+    } finally {
+      setIsGeneratingStoryboard(false);
+    }
+  };
+
   const handleGenerate = async () => {
     if (!selectedAvatar || !selectedVoice) {
       alert(t.create.labels.selectAsset);
@@ -336,16 +421,10 @@ export const QuickCreate: React.FC = () => {
     let scriptText: string | undefined;
     let scriptIdForSubmit: string | undefined;
 
-    if (audioMode === 'tts') {
-      if (scriptMode === 'editor') {
-        // 自定义编辑模式：使用 customScript，不传递 script_id
-        scriptText = customScript;
-        scriptIdForSubmit = undefined;
-      } else {
-        // 脚本库模式：使用 selectedScript
-        scriptText = selectedScript?.content;
-        scriptIdForSubmit = selectedScript?.id;
-      }
+    if (videoGenerationMode === 'audio_sync' || audioMode === 'tts') {
+      const currentScript = getCurrentScript();
+      scriptText = currentScript.text;
+      scriptIdForSubmit = currentScript.id;
 
       if (!scriptText) {
         alert(t.create.placeholders.script);
@@ -354,10 +433,14 @@ export const QuickCreate: React.FC = () => {
     }
 
     // 在直接使用音频模式下验证音色有音频文件
-    if (audioMode === 'direct' && !selectedVoice.file_url) {
+    if (videoGenerationMode === 'tts_required' && audioMode === 'direct' && !selectedVoice.file_url) {
       alert(t.create.labels.noAudioFile);
       return;
     }
+
+    const selectedStoryboardIds = videoGenerationMode === 'audio_sync'
+      ? selectedStoryboardFrameIds.filter(id => storyboardFrames.some(frame => frame.asset_id === id))
+      : [];
 
     setIsSubmitting(true);
 
@@ -366,13 +449,17 @@ export const QuickCreate: React.FC = () => {
         title: `Video Project - ${new Date().toLocaleDateString()}`,
         avatar_id: selectedAvatar.id,
         voice_id: selectedVoice.id,
-        script_id: audioMode === 'tts' ? scriptIdForSubmit : undefined,
-        script_content: audioMode === 'tts' ? scriptText : undefined,
+        script_id: (videoGenerationMode === 'audio_sync' || audioMode === 'tts') ? scriptIdForSubmit : undefined,
+        script_content: (videoGenerationMode === 'audio_sync' || audioMode === 'tts') ? scriptText : undefined,
         emotion: selectedEmotion,
         ...getEmotionPayload(),
         performance_prompt: prompt,
         resolution: '480p',
-        use_voice_audio_directly: audioMode === 'direct'
+        use_voice_audio_directly: videoGenerationMode === 'tts_required' && audioMode === 'direct',
+        video_generation_mode: videoGenerationMode,
+        storyboard_asset_ids: selectedStoryboardIds,
+        storyboard_mode: videoGenerationMode === 'audio_sync' && selectedStoryboardIds.length > 0 ? 'keyframes' : 'none',
+        language: locale,
       });
 
       setIsSubmitting(false);
@@ -590,7 +677,7 @@ export const QuickCreate: React.FC = () => {
                 {t.create.steps.content}
               </h3>
               <div className="space-y-4">
-                {audioMode === 'direct' ? (
+                {videoGenerationMode === 'tts_required' && audioMode === 'direct' ? (
                   /* Direct Audio Mode - Show info instead of script selection */
                   <GlassCard className="h-[350px] p-6 flex flex-col items-center justify-center relative overflow-hidden bg-white/[0.03]">
                     <div className="absolute -right-20 -top-20 w-64 h-64 bg-purple-500/10 blur-[100px] rounded-full" />
@@ -666,8 +753,8 @@ export const QuickCreate: React.FC = () => {
           </div>
 
           {/* Footer Actions */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-end pb-12">
-            <GlassCard className="p-8 space-y-6">
+          <div className="grid grid-cols-1 xl:grid-cols-[minmax(320px,0.9fr)_minmax(480px,1.1fr)] gap-5 items-start pb-12">
+            <GlassCard className="p-6 space-y-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-yellow-400/10 rounded-lg">
                   <Wand2 className="w-5 h-5 text-yellow-400" />
@@ -678,10 +765,10 @@ export const QuickCreate: React.FC = () => {
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder={t.create.placeholders.prompt}
-                className="w-full bg-black/40 border border-white/5 rounded-2xl p-6 text-sm text-white focus:outline-none focus:border-cyan-500/50 resize-none h-32 font-medium custom-scrollbar transition-all"
+                className="w-full bg-black/40 border border-white/5 rounded-2xl p-5 text-sm text-white focus:outline-none focus:border-cyan-500/50 resize-y min-h-28 font-medium custom-scrollbar transition-all leading-relaxed"
               />
               <div className="flex flex-wrap gap-2">
-                {PERFORMANCE_TAGS.map(tag => (
+                {performanceTags.map(tag => (
                   <button key={tag} onClick={() => setPrompt(p => p ? `${p}, ${tag}` : tag)} className="px-4 py-1.5 bg-white/5 hover:bg-white/20 rounded-full text-[10px] border border-white/5 transition-all text-gray-400 font-black uppercase tracking-wider">
                     {tag}
                   </button>
@@ -689,8 +776,178 @@ export const QuickCreate: React.FC = () => {
               </div>
             </GlassCard>
 
-            <div className="space-y-6">
-              {audioMode === 'tts' && (
+            <div className="space-y-4">
+              <GlassCard className="p-6 space-y-4 bg-white/[0.03]">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-cyan-500/10 rounded-lg">
+                    <Sparkles className="w-4 h-4 text-cyan-300" />
+                  </div>
+                  <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">
+                    {isZh ? '视频生成方式' : 'Video Mode'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setVideoGenerationMode('tts_required')}
+                    className={`p-3 rounded-xl transition-all border text-left ${videoGenerationMode === 'tts_required' ? 'bg-cyan-500/20 border-cyan-500/50' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
+                  >
+                    <div className={`text-xs font-bold ${videoGenerationMode === 'tts_required' ? 'text-cyan-200' : 'text-gray-400'}`}>
+                      {isZh ? '口播数字人' : 'Talking Avatar'}
+                    </div>
+                    <p className="text-[9px] text-gray-500 leading-relaxed mt-1">
+                      {isZh ? '脚本先生成语音，再驱动视频。' : 'Script becomes TTS audio before video.'}
+                    </p>
+                  </button>
+                  <button
+                    onClick={() => setVideoGenerationMode('audio_sync')}
+                    className={`p-3 rounded-xl transition-all border text-left ${videoGenerationMode === 'audio_sync' ? 'bg-cyan-500/20 border-cyan-500/50' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
+                  >
+                    <div className={`text-xs font-bold ${videoGenerationMode === 'audio_sync' ? 'text-cyan-200' : 'text-gray-400'}`}>
+                      {isZh ? '音画同步' : 'Audio Sync'}
+                    </div>
+                    <p className="text-[9px] text-gray-500 leading-relaxed mt-1">
+                      {isZh ? '跳过 TTS，用脚本和分镜生成视频。' : 'Skip TTS and use script plus storyboard.'}
+                    </p>
+                  </button>
+                </div>
+              </GlassCard>
+
+              {videoGenerationMode === 'audio_sync' && (
+                <GlassCard className="p-6 space-y-5 bg-white/[0.03]">
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-emerald-500/10 rounded-lg">
+                        <Wand2 className="w-4 h-4 text-emerald-300" />
+                      </div>
+                      <div>
+                        <span className="block text-[10px] font-black text-gray-300 uppercase tracking-widest">
+                          {isZh ? '3 张镜头分镜' : '3 Shot Storyboard'}
+                        </span>
+                        <span className="mt-1 block text-[10px] text-gray-500">
+                          {selectedAvatar?.file_url
+                            ? (isZh ? `参考当前形象：${selectedAvatar.title}` : `Using avatar reference: ${selectedAvatar.title}`)
+                            : (isZh ? '未选择形象图时，将按脚本文本直接生成。' : 'No avatar image selected; generating from script only.')}
+                        </span>
+                        <span className="mt-1 block text-[10px] text-emerald-300/80">
+                          {isZh ? '分镜是可选增强项；不选择分镜时，会直接用形象图、脚本和动作提示词生成。' : 'Storyboards are optional; without selected frames, the avatar, script, and action prompt drive the video.'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-[10px] font-black text-emerald-200">
+                      {isZh ? '输出 3 张完整分镜图' : '3 full-frame shots'}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+                      {isZh ? '分镜风格 / 额外要求' : 'Storyboard style / extra direction'}
+                    </p>
+                    <textarea
+                      value={storyboardStyle}
+                      onChange={(e) => setStoryboardStyle(e.target.value)}
+                      rows={3}
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/50 resize-y min-h-24 leading-relaxed custom-scrollbar"
+                      placeholder={isZh ? '例如：电影感商品广告、真实商业摄影、自然光、主角始终保持同一人...' : 'e.g. cinematic product ad, realistic commercial lighting, keep the same person across panels...'}
+                    />
+                  </div>
+                  <button
+                    onClick={handleGenerateStoryboard}
+                    disabled={isGeneratingStoryboard}
+                    className="w-full py-3 rounded-xl bg-emerald-500/20 text-emerald-200 font-black text-[10px] uppercase tracking-[0.2em] border border-emerald-500/30 flex items-center justify-center gap-2 hover:bg-emerald-500/30 disabled:opacity-40"
+                  >
+                    {isGeneratingStoryboard ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                    {isGeneratingStoryboard ? (isZh ? '生成中' : 'Generating') : (isZh ? '生成 3 张分镜' : 'Generate 3 Storyboards')}
+                  </button>
+                  {storyboardFrames.length > 0 && (
+                    <div className="space-y-3">
+                      <p className="text-[10px] font-bold text-gray-400">
+                        {selectedStoryboardFrameIds.length > 0
+                          ? (isZh ? '已选分镜将作为 keyframes 多图输入；每张图下面的视频镜头提示词会参与最终生成。' : 'Selected frames are sent as keyframes; each video shot prompt is used in the final prompt.')
+                          : (isZh ? '当前未使用分镜：将只使用形象图、脚本和动作/表演提示词生成音画同步视频。' : 'No storyboard selected: the audio-sync video will use only the avatar, script, and action prompt.')}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedStoryboardFrameIds(storyboardFrames.map(frame => frame.asset_id))}
+                          className="rounded-lg border border-emerald-400/20 bg-emerald-500/10 px-3 py-1.5 text-[10px] font-black text-emerald-200 transition-all hover:bg-emerald-500/20"
+                        >
+                          {isZh ? '使用全部分镜' : 'Use all frames'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedStoryboardFrameIds([])}
+                          className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-black text-gray-300 transition-all hover:bg-white/10"
+                        >
+                          {isZh ? '不使用分镜' : 'No storyboard'}
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                        {storyboardFrames.map(frame => {
+                          const selected = selectedStoryboardFrameIds.includes(frame.asset_id);
+                          return (
+                            <div
+                              key={frame.asset_id}
+                              className={`min-w-0 rounded-2xl border p-3 transition-all ${selected ? 'border-emerald-400/50 bg-emerald-500/10 shadow-[0_0_24px_rgba(16,185,129,0.08)]' : 'border-white/10 bg-black/20'}`}
+                            >
+                              <div className="space-y-3">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-black text-white">{isZh ? `分镜 ${frame.scene_index}` : `Shot ${frame.scene_index}`}</p>
+                                    <p className="mt-0.5 text-[10px] text-gray-500">{selected ? (isZh ? '将用于生成视频' : 'Included in video') : (isZh ? '不会用于生成视频' : 'Excluded from video')}</p>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleStoryboardFrame(frame.asset_id)}
+                                    className={`shrink-0 px-2.5 py-1.5 rounded-lg text-[10px] font-black border transition-all ${selected ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-200' : 'bg-white/5 border-white/10 text-gray-400'}`}
+                                  >
+                                    {selected ? (isZh ? '已选' : 'On') : (isZh ? '选择' : 'Select')}
+                                  </button>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setStoryboardPreviewFrame(frame)}
+                                  className="relative w-full aspect-[9/16] max-h-[320px] rounded-xl overflow-hidden bg-black/40 border border-white/10 group"
+                                >
+                                  <img src={frame.image_url} alt={`Scene ${frame.scene_index}`} className="w-full h-full object-cover" />
+                                  <span className="absolute inset-x-2 bottom-2 rounded-lg bg-black/70 px-2 py-1 text-center text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                                    {isZh ? '放大查看' : 'Zoom'}
+                                  </span>
+                                </button>
+                                <div className="space-y-2">
+                                  <div>
+                                    <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">{isZh ? '生图提示词' : 'Image prompt'}</p>
+                                    <div className="max-h-20 overflow-y-auto rounded-xl bg-black/30 border border-white/5 p-2.5 text-[11px] leading-relaxed text-gray-300 custom-scrollbar">
+                                      {frame.prompt}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] font-black text-emerald-300/80 uppercase tracking-widest mb-1">{isZh ? '视频镜头提示词' : 'Video shot prompt'}</p>
+                                    <div className="max-h-24 overflow-y-auto rounded-xl bg-emerald-950/30 border border-emerald-400/10 p-2.5 text-[11px] leading-relaxed text-emerald-50/80 custom-scrollbar">
+                                      {frame.video_prompt || (isZh ? '旧分镜未保存视频镜头提示词，请重新生成分镜。' : 'Old storyboard has no video shot prompt. Please regenerate.')}
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => setStoryboardPreviewFrame(frame)}
+                                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[10px] font-black text-gray-300 transition-all hover:bg-white/10"
+                                  >
+                                    {isZh ? '放大与查看完整提示词' : 'Zoom and full prompts'}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <p className="text-[10px] text-gray-500 leading-relaxed">
+                        {isZh ? '分镜会使用动作/表演提示词、脚本和当前形象图；更换形象、脚本或提示词后请重新生成。' : 'Storyboards use the performance prompt, script, and selected avatar; regenerate after changing them.'}
+                      </p>
+                    </div>
+                  )}
+                </GlassCard>
+              )}
+
+              {videoGenerationMode === 'tts_required' && audioMode === 'tts' && (
                 <GlassCard className="p-6 space-y-6 bg-white/5 border-white/10 backdrop-blur-xl relative overflow-hidden">
                   <div className={`absolute inset-0 bg-cyan-500/5 transition-opacity duration-700 ${(isSynthesizingPreview || isPreviewPlaying) ? 'opacity-100' : 'opacity-0'}`} />
 
@@ -861,7 +1118,7 @@ export const QuickCreate: React.FC = () => {
                 </GlassCard>
               )}
 
-              {audioMode === 'direct' && (
+              {videoGenerationMode === 'tts_required' && audioMode === 'direct' && (
                 <GlassCard className="p-6 space-y-6 bg-white/5 border-white/10 backdrop-blur-xl relative overflow-hidden">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -989,6 +1246,76 @@ export const QuickCreate: React.FC = () => {
                   </button>
                 </div>
               </GlassCard>
+            </div>
+          )}
+
+          {/* Storyboard Preview Modal */}
+          {storyboardPreviewFrame && (
+            <div
+              className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md animate-in fade-in duration-200"
+              onClick={() => setStoryboardPreviewFrame(null)}
+            >
+              <div
+                className="relative w-full max-w-5xl max-h-[92vh] overflow-hidden rounded-3xl border border-white/10 bg-slate-950/95 shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  onClick={() => setStoryboardPreviewFrame(null)}
+                  className="absolute right-4 top-4 z-10 rounded-full bg-black/60 p-2 text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+                <div className="grid max-h-[92vh] grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px]">
+                  <div className="flex min-h-0 items-center justify-center bg-black/60 p-4 lg:p-8">
+                    <img
+                      src={storyboardPreviewFrame.image_url}
+                      alt={`Scene ${storyboardPreviewFrame.scene_index}`}
+                      className="max-h-[58vh] w-full object-contain rounded-2xl lg:max-h-[86vh]"
+                    />
+                  </div>
+                  <div className="flex min-h-0 flex-col gap-4 border-t border-white/10 p-5 lg:border-l lg:border-t-0">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.25em] text-emerald-300">
+                        {isZh ? '3 张镜头分镜' : '3 Shot Storyboard'}
+                      </p>
+                      <h3 className="mt-2 text-xl font-black text-white">
+                        {isZh ? `分镜 ${storyboardPreviewFrame.scene_index} 预览` : `Shot ${storyboardPreviewFrame.scene_index} Preview`}
+                      </h3>
+                    </div>
+                    <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1 custom-scrollbar">
+                      <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-gray-500">
+                        {isZh ? '完整生图提示词' : 'Full image prompt'}
+                      </p>
+                      <div className="max-h-[28vh] overflow-y-auto rounded-2xl border border-white/10 bg-black/30 p-4 text-sm leading-relaxed text-gray-300 custom-scrollbar">
+                        {storyboardPreviewFrame.prompt}
+                      </div>
+                      <div>
+                        <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-emerald-300/80">
+                          {isZh ? '视频镜头提示词' : 'Video shot prompt'}
+                        </p>
+                        <div className="max-h-[28vh] overflow-y-auto rounded-2xl border border-emerald-400/10 bg-emerald-950/30 p-4 text-sm leading-relaxed text-emerald-50/80 custom-scrollbar">
+                          {storyboardPreviewFrame.video_prompt || (isZh ? '旧分镜未保存视频镜头提示词，请重新生成分镜。' : 'Old storyboard has no video shot prompt. Please regenerate.')}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        toggleStoryboardFrame(storyboardPreviewFrame.asset_id);
+                      }}
+                      className={`w-full rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.18em] transition-all ${
+                        selectedStoryboardFrameIds.includes(storyboardPreviewFrame.asset_id)
+                          ? 'border-emerald-400/40 bg-emerald-500/20 text-emerald-100'
+                          : 'border-white/10 bg-white/5 text-gray-300 hover:bg-white/10'
+                      }`}
+                    >
+                      {selectedStoryboardFrameIds.includes(storyboardPreviewFrame.asset_id)
+                        ? (isZh ? '已选择用于生成视频' : 'Selected for video')
+                        : (isZh ? '选择用于生成视频' : 'Select for video')}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

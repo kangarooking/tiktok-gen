@@ -69,7 +69,14 @@ async def create_project(
         emotion_audio_asset_id=data.emotion_audio_asset_id,
         performance_prompt=data.performance_prompt,
         resolution=data.resolution,
-        use_voice_audio_directly=data.use_voice_audio_directly
+        use_voice_audio_directly=data.use_voice_audio_directly,
+        video_generation_mode=data.video_generation_mode,
+        storyboard_asset_ids=data.storyboard_asset_ids,
+        reference_image_asset_ids=data.reference_image_asset_ids,
+        storyboard_mode=data.storyboard_mode,
+        prompt_mode=data.prompt_mode,
+        prompt_only_video=data.prompt_only_video,
+        language=data.language,
     )
 
 

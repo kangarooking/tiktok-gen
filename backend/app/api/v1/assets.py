@@ -1,7 +1,7 @@
 """
 资产API路由
 """
-from fastapi import APIRouter, Depends, Query, UploadFile, File, Form
+from fastapi import APIRouter, Depends, Query, UploadFile, File, Form, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -14,13 +14,14 @@ from app.schemas.asset import (
 )
 from app.services.asset_service import AssetService
 from app.models.user import User
+from app.core.exceptions import APIException
 
 router = APIRouter(prefix="/assets", tags=["Assets"])
 
 
 @router.get("", response_model=AssetListResponse)
 async def get_assets(
-    type: str = Query(None, regex="^(avatar|voice|script)$"),
+    type: str = Query(None, regex="^(avatar|voice|script|storyboard)$"),
     is_system: bool = Query(None),
     keyword: str = Query(None),
     page: int = Query(1, ge=1),
@@ -138,9 +139,9 @@ async def upload_avatar(
 async def generate_avatar(
     title: str = Form(...),
     prompt: str = Form(...),
-    style: str = Form("写实风格"),
-    gender: str = Form("女性"),
-    age_range: str = Form("20-30岁"),
+    style: str = Form(None),
+    gender: str = Form(None),
+    age_range: str = Form(None),
     reference_images: list[UploadFile] = File(default=[]),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -153,9 +154,16 @@ async def generate_avatar(
     - 创建资产记录
     """
     service = AssetService(db)
-    return await service.generate_avatar(
-        current_user.id, title, prompt, style, gender, age_range, reference_images
-    )
+    try:
+        return await service.generate_avatar(
+            current_user.id, title, prompt, style, gender, age_range, reference_images
+        )
+    except APIException:
+        raise
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"AI image generation failed: {exc}")
 
 
 @router.post("/voices/upload", response_model=AssetResponse)

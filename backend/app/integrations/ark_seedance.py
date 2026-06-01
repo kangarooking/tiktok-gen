@@ -24,6 +24,18 @@ class ArkSeedanceClient(DigitalHumanClientBase):
         return "digital_human"
 
     @classmethod
+    def requires_tts_audio(cls) -> bool:
+        return False
+
+    @classmethod
+    def supports_storyboard_images(cls) -> bool:
+        return True
+
+    @classmethod
+    def supports_audio_sync_prompt(cls) -> bool:
+        return True
+
+    @classmethod
     def get_required_fields(cls) -> list:
         return ["api_key", "base_url", "model"]
 

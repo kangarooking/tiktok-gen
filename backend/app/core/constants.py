@@ -16,6 +16,7 @@ class AssetType(str, Enum):
     AVATAR = "avatar"
     VOICE = "voice"
     SCRIPT = "script"
+    STORYBOARD = "storyboard"
 
 
 # 资产来源

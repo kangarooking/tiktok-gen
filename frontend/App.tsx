@@ -2,6 +2,7 @@ import React, { useState, useEffect, createContext, useContext, useRef } from 'r
 import { Landing } from './pages/Landing';
 import { Dashboard, NotificationProvider } from './pages/Dashboard';
 import { QuickCreate } from './pages/QuickCreate';
+import { SimpleCreate } from './pages/SimpleCreate';
 import { AssetsStudio } from './pages/AssetsStudio';
 import { Profile } from './pages/Profile';
 import { Settings } from './pages/Settings';
@@ -19,7 +20,8 @@ import {
   Home,
   Github,
   CheckCircle,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  ImagePlus
 } from 'lucide-react';
 import { Locale } from './types';
 import { translations } from './i18n';
@@ -174,7 +176,7 @@ const App = () => {
     }
 
     // Pages that require authentication
-    const protectedPages = ['#create', '#assets', '#profile', '#settings', '#dashboard'];
+    const protectedPages = ['#create', '#simple-create', '#assets', '#profile', '#settings', '#dashboard'];
     if (protectedPages.includes(currentHash) && !user) {
       return (
         <Landing
@@ -188,6 +190,7 @@ const App = () => {
 
     switch (currentHash) {
       case '#create': return <QuickCreate />;
+      case '#simple-create': return <SimpleCreate />;
       case '#assets': return <AssetsStudio />;
       case '#profile': return <Profile />;
       case '#settings': return <Settings />;
@@ -265,6 +268,10 @@ const App = () => {
                 <button onClick={() => navigateTo('#create')} className={navItemClass('#create')}>
                     <Zap className="w-5 h-5" />
                     <span className="hidden lg:block font-medium">{t.nav.create}</span>
+                </button>
+                <button onClick={() => navigateTo('#simple-create')} className={navItemClass('#simple-create')}>
+                    <ImagePlus className="w-5 h-5" />
+                    <span className="hidden lg:block font-medium">{locale === 'zh' ? '简单创作' : 'Simple Create'}</span>
                 </button>
                 <button onClick={() => navigateTo('#assets')} className={navItemClass('#assets')}>
                     <Layers className="w-5 h-5" />

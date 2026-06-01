@@ -79,7 +79,7 @@ export function useAuth() {
 // Assets Hook
 // ============================================
 
-export function useAssets(type?: 'avatar' | 'voice' | 'script') {
+export function useAssets(type?: 'avatar' | 'voice' | 'script' | 'storyboard') {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -150,6 +150,13 @@ export function useProjects() {
     performance_prompt?: string;
     resolution?: string;
     use_voice_audio_directly?: boolean;
+    video_generation_mode?: 'tts_required' | 'audio_sync';
+    storyboard_asset_ids?: string[];
+    reference_image_asset_ids?: string[];
+    storyboard_mode?: 'none' | 'first_frame' | 'multi_image' | 'keyframes';
+    prompt_mode?: 'script' | 'direct';
+    prompt_only_video?: boolean;
+    language?: 'zh' | 'en';
   }) => {
     const project = await projectsApi.createProject(data);
     setProjects(prev => [project, ...prev]);

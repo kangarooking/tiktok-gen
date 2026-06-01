@@ -1,16 +1,19 @@
 export enum AssetType {
   AVATAR = 'avatar',
   VOICE = 'voice',
-  SCRIPT = 'script'
+  SCRIPT = 'script',
+  STORYBOARD = 'storyboard'
 }
 
 export type AudioMode = 'tts' | 'direct';
+export type VideoGenerationMode = 'tts_required' | 'audio_sync';
+export type StoryboardMode = 'none' | 'first_frame' | 'multi_image' | 'keyframes';
 
 export type Locale = 'en' | 'zh';
 
 export interface Asset {
   id: string;
-  type: 'avatar' | 'voice' | 'script';
+  type: 'avatar' | 'voice' | 'script' | 'storyboard';
   title: string;
   description?: string;
   is_system: boolean;
@@ -27,6 +30,11 @@ export interface Asset {
     word_count?: number;
     width?: number;
     height?: number;
+    storyboard_id?: string;
+    scene_index?: number;
+    scene_count?: number;
+    provider?: string;
+    model?: string;
   };
   status?: string;
   created_at: string;

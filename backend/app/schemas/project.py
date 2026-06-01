@@ -56,6 +56,13 @@ class ProjectCreateRequest(BaseModel):
     performance_prompt: Optional[str] = ""
     resolution: Optional[str] = "480p"
     use_voice_audio_directly: Optional[bool] = False
+    video_generation_mode: Optional[str] = "tts_required"
+    storyboard_asset_ids: Optional[List[str]] = None
+    reference_image_asset_ids: Optional[List[str]] = None
+    storyboard_mode: Optional[str] = "none"
+    prompt_mode: Optional[str] = "script"
+    prompt_only_video: Optional[bool] = False
+    language: Optional[str] = "zh"
 
 
 class ProjectStatusResponse(BaseModel):

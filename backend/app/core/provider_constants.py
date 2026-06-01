@@ -21,12 +21,15 @@ class AIImageProvider(str, Enum):
     """AI Image generation providers"""
     BANANA_PRO = "banana_pro"
     NANOBANANA_PRO = "nanobanana_pro"
+    AGNES_IMAGE = "agnes_image"
+    APIMART_GPT_IMAGE2 = "apimart_gpt_image2"
     CUSTOM_OPENAI = "custom_openai"
 
 
 class CloudStorageProvider(str, Enum):
     """Cloud storage providers"""
     ALIYUN_OSS = "aliyun_oss"
+    IMGBB = "imgbb"
     TENCENT_COS = "tencent_cos"
     QINIU = "qiniu"
 
@@ -35,6 +38,7 @@ class DigitalHumanProvider(str, Enum):
     """Digital human video generation providers"""
     WAVESPEED = "wavespeed"
     ARK_SEEDANCE = "ark_seedance"
+    AGNES_VIDEO = "agnes_video"
     JIMENG = "jimeng"
     SORA = "sora"
     VEO = "veo"
@@ -55,6 +59,7 @@ class TTSProvider(str, Enum):
 class LLMProvider(str, Enum):
     """Large language model providers"""
     GLM = "glm"
+    AGNES = "agnes"
     OPENAI = "openai"
     GEMINI = "gemini"
     BAIDU_WENXIN = "baidu_wenxin"
@@ -182,6 +187,149 @@ PROVIDER_DEFINITIONS: Dict[str, ProviderDefinition] = {
         ]
     ),
 
+    "agnes_image": ProviderDefinition(
+        provider="agnes_image",
+        display_name="Agnes Image 2.1 Flash",
+        description="Agnes text-to-image and image-to-image generation",
+        category=ApiCategory.AI_IMAGE,
+        website_url="https://agnes-ai.com",
+        icon="image",
+        fields=[
+            ProviderField(
+                name="api_key",
+                label="API Key",
+                field_type="password",
+                required=True,
+                placeholder="Enter your Agnes API key",
+                sensitive=True
+            ),
+            ProviderField(
+                name="base_url",
+                label="Base URL",
+                field_type="url",
+                required=True,
+                default="https://apihub.agnes-ai.com/v1",
+                placeholder="https://apihub.agnes-ai.com/v1"
+            ),
+            ProviderField(
+                name="model",
+                label="Model",
+                field_type="text",
+                required=True,
+                default="agnes-image-2.1-flash",
+                placeholder="agnes-image-2.1-flash"
+            ),
+            ProviderField(
+                name="size",
+                label="Default Size",
+                field_type="text",
+                required=False,
+                default="1024x768",
+                placeholder="1024x768"
+            ),
+            ProviderField(
+                name="timeout",
+                label="Timeout (seconds)",
+                field_type="number",
+                required=False,
+                default=180,
+                min_value=30,
+                max_value=600
+            ),
+        ]
+    ),
+
+    "apimart_gpt_image2": ProviderDefinition(
+        provider="apimart_gpt_image2",
+        display_name="APIMart GPT-Image-2",
+        description="APIMart hosted GPT-Image-2 async image generation",
+        category=ApiCategory.AI_IMAGE,
+        website_url="https://docs.apimart.ai",
+        icon="image",
+        fields=[
+            ProviderField(
+                name="api_key",
+                label="API Key",
+                field_type="password",
+                required=True,
+                placeholder="Enter your APIMart API key",
+                sensitive=True
+            ),
+            ProviderField(
+                name="base_url",
+                label="Base URL",
+                field_type="url",
+                required=True,
+                default="https://api.apimart.ai",
+                placeholder="https://api.apimart.ai"
+            ),
+            ProviderField(
+                name="model",
+                label="Model",
+                field_type="text",
+                required=True,
+                default="gpt-image-2",
+                placeholder="gpt-image-2"
+            ),
+            ProviderField(
+                name="size",
+                label="Default Size",
+                field_type="select",
+                required=False,
+                default="9:16",
+                options=[
+                    {"value": "9:16", "label": "9:16"},
+                    {"value": "16:9", "label": "16:9"},
+                    {"value": "1:1", "label": "1:1"},
+                    {"value": "4:5", "label": "4:5"},
+                    {"value": "5:4", "label": "5:4"},
+                    {"value": "auto", "label": "auto"},
+                ]
+            ),
+            ProviderField(
+                name="resolution",
+                label="Resolution",
+                field_type="select",
+                required=False,
+                default="1k",
+                options=[
+                    {"value": "1k", "label": "1k"},
+                    {"value": "2k", "label": "2k"},
+                    {"value": "4k", "label": "4k"},
+                ]
+            ),
+            ProviderField(
+                name="official_fallback",
+                label="Official Fallback",
+                field_type="select",
+                required=False,
+                default="false",
+                options=[
+                    {"value": "false", "label": "false"},
+                    {"value": "true", "label": "true"},
+                ]
+            ),
+            ProviderField(
+                name="poll_interval",
+                label="Poll Interval (seconds)",
+                field_type="number",
+                required=False,
+                default=5,
+                min_value=1,
+                max_value=30
+            ),
+            ProviderField(
+                name="timeout",
+                label="Timeout (seconds)",
+                field_type="number",
+                required=False,
+                default=300,
+                min_value=30,
+                max_value=1800
+            ),
+        ]
+    ),
+
     # ==================== Cloud Storage Providers ====================
     "aliyun_oss": ProviderDefinition(
         provider="aliyun_oss",
@@ -237,6 +385,52 @@ PROVIDER_DEFINITIONS: Dict[str, ProviderDefinition] = {
                 placeholder="https://my-bucket.oss-cn-beijing.aliyuncs.com"
             ),
         ]
+    ),
+
+    "imgbb": ProviderDefinition(
+        provider="imgbb",
+        display_name="ImgBB",
+        description="ImgBB image hosting for public image URLs",
+        category=ApiCategory.CLOUD_STORAGE,
+        website_url="https://api.imgbb.com/",
+        icon="image",
+        fields=[
+            ProviderField(
+                name="api_key",
+                label="API Key",
+                field_type="password",
+                required=True,
+                placeholder="Enter your ImgBB API key",
+                sensitive=True,
+            ),
+            ProviderField(
+                name="base_url",
+                label="Base URL",
+                field_type="url",
+                required=True,
+                default="https://api.imgbb.com/1/upload",
+                placeholder="https://api.imgbb.com/1/upload",
+            ),
+            ProviderField(
+                name="expiration",
+                label="Expiration (seconds)",
+                field_type="number",
+                required=False,
+                default=0,
+                min_value=0,
+                max_value=15552000,
+                description="0 means permanent image link",
+            ),
+            ProviderField(
+                name="timeout",
+                label="Timeout (seconds)",
+                field_type="number",
+                required=False,
+                default=60,
+                min_value=10,
+                max_value=300,
+            ),
+        ],
     ),
 
     "tencent_cos": ProviderDefinition(
@@ -464,6 +658,103 @@ PROVIDER_DEFINITIONS: Dict[str, ProviderDefinition] = {
                 required=False,
                 default=600,
                 min_value=30,
+                max_value=1800
+            ),
+        ]
+    ),
+
+    "agnes_video": ProviderDefinition(
+        provider="agnes_video",
+        display_name="Agnes Video V2.0",
+        description="Agnes audio-synced text/image/keyframe video generation",
+        category=ApiCategory.DIGITAL_HUMAN,
+        website_url="https://agnes-ai.com",
+        icon="video",
+        fields=[
+            ProviderField(
+                name="api_key",
+                label="API Key",
+                field_type="password",
+                required=True,
+                placeholder="Enter your Agnes API key",
+                sensitive=True
+            ),
+            ProviderField(
+                name="base_url",
+                label="Base URL",
+                field_type="url",
+                required=True,
+                default="https://apihub.agnes-ai.com/v1",
+                placeholder="https://apihub.agnes-ai.com/v1"
+            ),
+            ProviderField(
+                name="model",
+                label="Model",
+                field_type="text",
+                required=True,
+                default="agnes-video-v2.0",
+                placeholder="agnes-video-v2.0"
+            ),
+            ProviderField(
+                name="width",
+                label="Width",
+                field_type="number",
+                required=False,
+                default=1152,
+                min_value=256,
+                max_value=2048
+            ),
+            ProviderField(
+                name="height",
+                label="Height",
+                field_type="number",
+                required=False,
+                default=768,
+                min_value=256,
+                max_value=2048
+            ),
+            ProviderField(
+                name="num_frames",
+                label="Frame Count",
+                field_type="number",
+                required=False,
+                default=193,
+                description="Must be <= 441 and satisfy 8n + 1",
+                min_value=9,
+                max_value=441
+            ),
+            ProviderField(
+                name="frame_rate",
+                label="FPS",
+                field_type="number",
+                required=False,
+                default=24,
+                min_value=1,
+                max_value=60
+            ),
+            ProviderField(
+                name="negative_prompt",
+                label="Negative Prompt",
+                field_type="text",
+                required=False,
+                placeholder="blur, low quality, distorted face"
+            ),
+            ProviderField(
+                name="poll_interval",
+                label="Poll Interval (seconds)",
+                field_type="number",
+                required=False,
+                default=5,
+                min_value=1,
+                max_value=30
+            ),
+            ProviderField(
+                name="timeout",
+                label="Timeout (seconds)",
+                field_type="number",
+                required=False,
+                default=1800,
+                min_value=60,
                 max_value=1800
             ),
         ]
@@ -904,6 +1195,68 @@ PROVIDER_DEFINITIONS: Dict[str, ProviderDefinition] = {
                     {"value": "glm-4-flash", "label": "GLM-4-Flash (Faster)"},
                     {"value": "glm-4-plus", "label": "GLM-4-Plus"},
                 ]
+            ),
+        ]
+    ),
+
+    "agnes": ProviderDefinition(
+        provider="agnes",
+        display_name="Agnes 2.0 Flash",
+        description="Agnes OpenAI-compatible language model for scripts and agent workflows",
+        category=ApiCategory.LLM,
+        website_url="https://agnes-ai.com",
+        icon="brain",
+        fields=[
+            ProviderField(
+                name="api_key",
+                label="API Key",
+                field_type="password",
+                required=True,
+                placeholder="Enter your Agnes API key",
+                sensitive=True
+            ),
+            ProviderField(
+                name="base_url",
+                label="Base URL",
+                field_type="url",
+                required=True,
+                default="https://apihub.agnes-ai.com/v1",
+                placeholder="https://apihub.agnes-ai.com/v1"
+            ),
+            ProviderField(
+                name="model",
+                label="Model",
+                field_type="text",
+                required=True,
+                default="agnes-2.0-flash",
+                placeholder="agnes-2.0-flash"
+            ),
+            ProviderField(
+                name="temperature",
+                label="Temperature",
+                field_type="number",
+                required=False,
+                default=0.7,
+                min_value=0,
+                max_value=2
+            ),
+            ProviderField(
+                name="max_tokens",
+                label="Max Tokens",
+                field_type="number",
+                required=False,
+                default=1024,
+                min_value=1,
+                max_value=8192
+            ),
+            ProviderField(
+                name="timeout",
+                label="Timeout (seconds)",
+                field_type="number",
+                required=False,
+                default=60,
+                min_value=10,
+                max_value=300
             ),
         ]
     ),

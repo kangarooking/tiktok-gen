@@ -165,7 +165,7 @@ export const assetsApi = {
    * Get assets list
    */
   getAssets: (params?: {
-    type?: 'avatar' | 'voice' | 'script';
+    type?: 'avatar' | 'voice' | 'script' | 'storyboard';
     is_system?: boolean;
     keyword?: string;
     page?: number;
@@ -349,6 +349,13 @@ export const projectsApi = {
     performance_prompt?: string;
     resolution?: string;
     use_voice_audio_directly?: boolean;
+    video_generation_mode?: 'tts_required' | 'audio_sync';
+    storyboard_asset_ids?: string[];
+    reference_image_asset_ids?: string[];
+    storyboard_mode?: 'none' | 'first_frame' | 'multi_image' | 'keyframes';
+    prompt_mode?: 'script' | 'direct';
+    prompt_only_video?: boolean;
+    language?: 'zh' | 'en';
   }) =>
     request<Project>('/projects', {
       method: 'POST',
@@ -420,6 +427,34 @@ export const generationApi = {
         word_count: number;
       }>;
     }>('/generation/script', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  /**
+   * Generate storyboard frames from a script
+   */
+  generateStoryboard: (data: {
+    script_content: string;
+    product_name?: string;
+    user_prompt?: string;
+    style?: string;
+    frame_count?: number;
+    aspect_ratio?: string;
+    image_provider?: string;
+    reference_image_url?: string;
+    language?: 'zh' | 'en';
+  }) =>
+    request<{
+      storyboard_id: string;
+      frames: Array<{
+        asset_id: string;
+        scene_index: number;
+        prompt: string;
+        video_prompt?: string;
+        image_url: string;
+      }>;
+    }>('/generation/storyboard', {
       method: 'POST',
       body: JSON.stringify(data),
     }),

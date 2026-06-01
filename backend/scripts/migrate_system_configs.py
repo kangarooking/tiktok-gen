@@ -176,7 +176,7 @@ async def migrate_system_configs():
         # ============================================================
         # Cloud Storage Configuration (Aliyun OSS)
         # ============================================================
-        print("\n[6/7] Migrating Cloud Storage Configuration (Aliyun OSS)...")
+        print("\n[6/8] Migrating Cloud Storage Configuration (Aliyun OSS)...")
 
         if settings.OSS_ACCESS_KEY_ID and settings.OSS_ACCESS_KEY_SECRET:
             try:
@@ -201,10 +201,35 @@ async def migrate_system_configs():
             print("  - OSS credentials not set, skipping")
 
         # ============================================================
+        # Cloud Storage Configuration (ImgBB)
+        # ============================================================
+        print("\n[7/8] Migrating Cloud Storage Configuration (ImgBB)...")
+
+        if settings.IMGBB_API_KEY:
+            try:
+                await service.create_system_config(
+                    category=ApiCategory.CLOUD_STORAGE.value,
+                    provider="imgbb",
+                    config_data={
+                        "api_key": settings.IMGBB_API_KEY,
+                        "base_url": settings.IMGBB_BASE_URL,
+                        "expiration": settings.IMGBB_EXPIRATION,
+                        "timeout": 60,
+                    },
+                    display_name="ImgBB (System Default)",
+                    set_as_default=True
+                )
+                print("  ✓ ImgBB configuration migrated")
+            except Exception as e:
+                print(f"  ✗ Failed to migrate ImgBB: {e}")
+        else:
+            print("  - IMGBB_API_KEY not set, skipping")
+
+        # ============================================================
         # AI Image Configuration (Banana Pro)
         # Note: Currently hardcoded, need to add to .env
         # ============================================================
-        print("\n[7/7] Migrating AI Image Configuration...")
+        print("\n[8/8] Migrating AI Image Configuration...")
 
         # Check for Banana Pro config (these might need to be added to .env)
         banana_api_key = getattr(settings, 'BANANA_PRO_API_KEY', None)

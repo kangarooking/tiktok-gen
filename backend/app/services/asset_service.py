@@ -11,6 +11,7 @@ import logging
 
 from app.models.asset import Asset, AssetTag
 from app.core.constants import AssetType
+from app.core.exceptions import ConfigurationError
 from app.integrations.client_factory import ClientFactory
 import httpx
 
@@ -173,7 +174,7 @@ class AssetService:
             file_url=file_url,
             file_size_bytes=len(contents),
             file_mime_type=file.content_type,
-            metadata={"original_filename": file.filename}
+            meta_data={"original_filename": file.filename}
         )
         self.db.add(asset)
         self.db.commit()
@@ -186,9 +187,9 @@ class AssetService:
         user_id: str,
         title: str,
         prompt: str,
-        style: str = "写实风格",
-        gender: str = "女性",
-        age_range: str = "20-30岁",
+        style: str = None,
+        gender: str = None,
+        age_range: str = None,
         reference_images: list = None
     ) -> Dict:
         """
@@ -238,21 +239,32 @@ class AssetService:
                 raise Exception(f"Failed to download generated image: {response.status_code}")
             image_data = response.content
 
-        # 获取云存储客户端
-        oss_client = await self._get_oss_client(user_id if isinstance(user_id, UUID) else UUID(user_id))
+        file_url = image_url
+        storage_mode = "provider_url"
+        storage_error = None
+        try:
+            # 获取云存储客户端
+            oss_client = await self._get_oss_client(user_id if isinstance(user_id, UUID) else UUID(user_id))
 
-        # 生成OSS路径
-        file_ext = ".png"
-        object_key = oss_client.generate_object_key(
-            user_id, "avatars", file_ext
-        )
+            # 生成OSS路径
+            file_ext = ".png"
+            object_key = oss_client.generate_object_key(
+                user_id, "avatars", file_ext
+            )
 
-        # 上传到OSS
-        file_url = await oss_client.upload_file(
-            file_data=image_data,
-            key=object_key,
-            content_type="image/png"
-        )
+            # 上传到OSS
+            file_url = await oss_client.upload_file(
+                file_data=image_data,
+                key=object_key,
+                content_type="image/png"
+            )
+            storage_mode = "cloud_storage"
+        except ConfigurationError as exc:
+            storage_error = str(exc)
+            logger.warning(
+                "Cloud storage is not configured; saving generated avatar provider URL directly: %s",
+                storage_error,
+            )
 
         # 创建资产记录
         asset = Asset(
@@ -265,12 +277,17 @@ class AssetService:
             file_url=file_url,
             file_size_bytes=len(image_data),
             file_mime_type="image/png",
-            metadata={
+            meta_data={
                 "prompt": prompt,
                 "style": style,
                 "gender": gender,
                 "age_range": age_range,
-                "generation_tokens": result.get("total_tokens", 0)
+                "generation_tokens": result.get("total_tokens", 0),
+                "provider": ai_image_client.get_provider_name(),
+                "model": result.get("model"),
+                "origin_image_url": image_url,
+                "storage_mode": storage_mode,
+                "storage_error": storage_error,
             }
         )
         self.db.add(asset)
@@ -333,7 +350,7 @@ class AssetService:
             file_url=file_url,
             file_size_bytes=len(contents),
             file_mime_type=file.content_type,
-            metadata={
+            meta_data={
                 "original_filename": file.filename,
                 "gender": gender,
                 "tags": tags or []
@@ -383,7 +400,7 @@ class AssetService:
             source="upload",
             status="ready",
             is_system=False,
-            metadata={
+            meta_data={
                 "word_count": word_count,
                 "estimated_seconds": estimated_seconds,
                 "tags": tags or []

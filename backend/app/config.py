@@ -55,6 +55,17 @@ class Settings(BaseSettings):
     GLM_MODEL: str = "glm-4.7"
     GLM_TIMEOUT: int = 60
 
+    # Agnes AI 配置
+    AGNES_API_KEY: str = ""
+    AGNES_BASE_URL: str = "https://apihub.agnes-ai.com/v1"
+    AGNES_LLM_MODEL: str = "agnes-2.0-flash"
+    AGNES_IMAGE_MODEL: str = "agnes-image-2.1-flash"
+    AGNES_VIDEO_MODEL: str = "agnes-video-v2.0"
+
+    # APIMart GPT-Image-2 配置
+    APIMART_API_KEY: str = ""
+    APIMART_BASE_URL: str = "https://api.apimart.ai"
+
     # WaveSpeed AI数字人配置
     WAVESPEED_API_KEY: str
     WAVESPEED_API_BASE_URL: str = "https://api.302.ai/ws/api/v3"
@@ -81,6 +92,11 @@ class Settings(BaseSettings):
     OSS_ENDPOINT: str
     OSS_REGION: str = "cn-beijing"
     OSS_PUBLIC_BASE_URL: str
+
+    # ImgBB 图床配置
+    IMGBB_API_KEY: str = ""
+    IMGBB_BASE_URL: str = "https://api.imgbb.com/1/upload"
+    IMGBB_EXPIRATION: int = 0
 
     # Banana Pro AI生图配置
     BANANA_PRO_API_KEY: str = ""

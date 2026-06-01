@@ -167,6 +167,21 @@ class DigitalHumanClientBase(BaseIntegrationClient):
     def get_category(cls) -> str:
         return "digital_human"
 
+    @classmethod
+    def requires_tts_audio(cls) -> bool:
+        """Whether this provider needs a pre-generated audio URL."""
+        return True
+
+    @classmethod
+    def supports_storyboard_images(cls) -> bool:
+        """Whether this provider can consume one or more storyboard images."""
+        return False
+
+    @classmethod
+    def supports_audio_sync_prompt(cls) -> bool:
+        """Whether prompt/script content is enough for audio-synced video."""
+        return False
+
     @abstractmethod
     async def generate_video(
         self,
@@ -256,3 +271,16 @@ class AIImageClientBase(BaseIntegrationClient):
             URL of the generated image
         """
         pass
+
+    async def generate_image_with_metadata(
+        self,
+        prompt: str,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """Generate an image and wrap it with provider metadata."""
+        image_url = await self.generate_image(prompt, **kwargs)
+        return {
+            "image_url": image_url,
+            "provider": self.get_provider_name(),
+            "metadata": {},
+        }

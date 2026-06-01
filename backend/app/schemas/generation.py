@@ -51,3 +51,31 @@ class ScriptInfo(BaseModel):
 class ScriptGenerateResponse(BaseModel):
     """脚本生成响应"""
     scripts: List[ScriptInfo]
+
+
+class StoryboardGenerateRequest(BaseModel):
+    """图片分镜生成请求"""
+    script_content: str = Field(..., min_length=1, max_length=8000)
+    product_name: Optional[str] = Field(default=None, max_length=200)
+    user_prompt: Optional[str] = Field(default=None, max_length=3000)
+    style: Optional[str] = Field(default="电影感 TikTok 商品广告，真实商业摄影风格", max_length=1200)
+    frame_count: int = Field(default=3, ge=1, le=6)
+    aspect_ratio: Optional[str] = "9:16"
+    image_provider: Optional[str] = None
+    reference_image_url: Optional[str] = Field(default=None, max_length=2000)
+    language: Optional[str] = "zh"
+
+
+class StoryboardFrameInfo(BaseModel):
+    """单张分镜信息"""
+    asset_id: str
+    scene_index: int
+    prompt: str
+    video_prompt: Optional[str] = None
+    image_url: str
+
+
+class StoryboardGenerateResponse(BaseModel):
+    """图片分镜生成响应"""
+    storyboard_id: str
+    frames: List[StoryboardFrameInfo]

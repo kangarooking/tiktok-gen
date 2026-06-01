@@ -200,7 +200,8 @@ def register_all_clients():
     """
     # Import all client modules to trigger registration
     try:
-        from app.integrations import glm_llm, index_tts, siliconflow_tts, wavespeed_api, ark_seedance, oss_storage, banana_pro
+        from app.integrations import glm_llm, index_tts, siliconflow_tts, wavespeed_api, ark_seedance, oss_storage, imgbb_storage, banana_pro
+        from app.integrations import agnes_llm, agnes_image, agnes_video, apimart_gpt_image2
         from app.integrations import custom_openai_ai_image, custom_llm, custom_tts, custom_digital_human
         # These imports will register themselves via decorator or explicit registration
     except ImportError as e:
@@ -208,24 +209,34 @@ def register_all_clients():
 
     # Explicitly register known clients
     from app.integrations.glm_llm import GLMLLMClient
+    from app.integrations.agnes_llm import AgnesLLMClient
     from app.integrations.index_tts import IndexTTSClient
     from app.integrations.siliconflow_tts import SiliconFlowTTSClient
     from app.integrations.wavespeed_api import WaveSpeedClient
     from app.integrations.ark_seedance import ArkSeedanceClient
+    from app.integrations.agnes_video import AgnesVideoClient
     from app.integrations.oss_storage import OSSClient
+    from app.integrations.imgbb_storage import ImgBBClient
     from app.integrations.banana_pro import BananaProClient
+    from app.integrations.agnes_image import AgnesImageClient
+    from app.integrations.apimart_gpt_image2 import APIMartGPTImage2Client
     from app.integrations.custom_openai_ai_image import CustomOpenAIAIImageClient
     from app.integrations.custom_llm import CustomLLMClient
     from app.integrations.custom_tts import CustomTTSClient
     from app.integrations.custom_digital_human import CustomDigitalHumanClient
 
     ClientFactory.register(GLMLLMClient)
+    ClientFactory.register(AgnesLLMClient)
     ClientFactory.register(IndexTTSClient)
     ClientFactory.register(SiliconFlowTTSClient)
     ClientFactory.register(WaveSpeedClient)
     ClientFactory.register(ArkSeedanceClient)
+    ClientFactory.register(AgnesVideoClient)
     ClientFactory.register(OSSClient)
+    ClientFactory.register(ImgBBClient)
     ClientFactory.register(BananaProClient)
+    ClientFactory.register(AgnesImageClient)
+    ClientFactory.register(APIMartGPTImage2Client)
     ClientFactory.register(CustomOpenAIAIImageClient)
     ClientFactory.register(CustomLLMClient)
     ClientFactory.register(CustomTTSClient)

@@ -98,7 +98,14 @@ class ProjectService:
         emotion_audio_asset_id: Optional[str] = None,
         performance_prompt: str = "",
         resolution: str = "480p",
-        use_voice_audio_directly: bool = False
+        use_voice_audio_directly: bool = False,
+        video_generation_mode: str = "tts_required",
+        storyboard_asset_ids: Optional[List[str]] = None,
+        reference_image_asset_ids: Optional[List[str]] = None,
+        storyboard_mode: str = "none",
+        prompt_mode: str = "script",
+        prompt_only_video: bool = False,
+        language: str = "zh"
     ) -> Dict:
         """
         创建视频生成项目
@@ -130,17 +137,33 @@ class ProjectService:
         avatar = self._get_accessible_asset(avatar_id, user_id, "avatar")
         voice = self._get_accessible_asset(voice_id, user_id, "voice")
         final_script_content = script_content
+        video_generation_mode = video_generation_mode or "tts_required"
+        storyboard_asset_ids = storyboard_asset_ids or []
+        reference_image_asset_ids = reference_image_asset_ids or []
+        storyboard_mode = storyboard_mode or "none"
+        prompt_mode = prompt_mode if prompt_mode in {"script", "direct"} else "script"
+        language = language if language in {"zh", "en"} else "zh"
 
-        # 如果直接使用音色音频，验证音色有 file_url
-        if use_voice_audio_directly:
+        if video_generation_mode not in {"tts_required", "audio_sync"}:
+            raise ValueError("不支持的视频生成模式")
+        if storyboard_mode not in {"none", "first_frame", "multi_image", "keyframes"}:
+            raise ValueError("不支持的分镜模式")
+
+        if script_id and not final_script_content:
+            script = self._get_accessible_asset(script_id, user_id, "script")
+            final_script_content = script.content
+
+        if video_generation_mode == "audio_sync":
+            if not final_script_content:
+                raise ValueError("音画同步模式需要脚本文案")
+            for asset_id in storyboard_asset_ids:
+                self._get_accessible_asset(asset_id, user_id, "storyboard")
+            for asset_id in reference_image_asset_ids:
+                self._get_accessible_asset(asset_id, user_id, "avatar")
+        elif use_voice_audio_directly:
             if not voice.file_url:
                 raise ValueError("所选音色没有音频文件，无法直接使用")
         else:
-            # TTS 模式需要验证脚本
-            if script_id:
-                script = self._get_accessible_asset(script_id, user_id, "script")
-                final_script_content = script.content
-
             if not final_script_content:
                 raise ValueError("脚本内容不能为空")
 
@@ -158,7 +181,7 @@ class ProjectService:
             avatar_id=avatar_id,
             voice_id=voice_id,
             script_id=script_id,
-            script_content=final_script_content if not use_voice_audio_directly else "[DIRECT_AUDIO_MODE]",
+            script_content=final_script_content if (video_generation_mode == "audio_sync" or not use_voice_audio_directly) else "[DIRECT_AUDIO_MODE]",
             config={
                 "emotion": emotion,
                 "emotion_mode": emotion_mode,
@@ -169,7 +192,14 @@ class ProjectService:
                 "performance_prompt": performance_prompt,
                 "resolution": resolution,
                 "seed": -1,
-                "use_voice_audio_directly": use_voice_audio_directly
+                "use_voice_audio_directly": use_voice_audio_directly,
+                "video_generation_mode": video_generation_mode,
+                "storyboard_asset_ids": storyboard_asset_ids,
+                "reference_image_asset_ids": reference_image_asset_ids,
+                "storyboard_mode": storyboard_mode,
+                "prompt_mode": prompt_mode,
+                "prompt_only_video": bool(prompt_only_video),
+                "language": language
             }
         )
         self.db.add(project)

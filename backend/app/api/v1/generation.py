@@ -11,7 +11,9 @@ from app.schemas.generation import (
     AudioPreviewResponse,
     AudioPreviewSaveRequest,
     ScriptGenerateRequest,
-    ScriptGenerateResponse
+    ScriptGenerateResponse,
+    StoryboardGenerateRequest,
+    StoryboardGenerateResponse
 )
 from app.schemas.asset import AssetResponse
 from app.services.generation_service import GenerationService
@@ -90,3 +92,33 @@ async def generate_script(
         tone=data.tone,
         duration_seconds=data.duration_seconds
     )
+
+
+@router.post("/storyboard", response_model=StoryboardGenerateResponse)
+async def generate_storyboard(
+    data: StoryboardGenerateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    AI生成图片分镜
+    - 根据脚本文案拆分镜头
+    - 调用用户配置的AI图片provider
+    - 保存为storyboard资产
+    """
+    service = GenerationService(db)
+    try:
+        return await service.generate_storyboard(
+            user_id=current_user.id,
+            script_content=data.script_content,
+            product_name=data.product_name,
+            user_prompt=data.user_prompt,
+            style=data.style,
+            frame_count=data.frame_count,
+            aspect_ratio=data.aspect_ratio,
+            image_provider=data.image_provider,
+            reference_image_url=data.reference_image_url,
+            language=data.language,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

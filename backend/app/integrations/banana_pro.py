@@ -157,9 +157,9 @@ class BananaProClient(AIImageClientBase):
     async def generate_avatar_image(
         self,
         description: str,
-        style: str = "写实风格",
-        gender: str = "女性",
-        age_range: str = "20-30岁",
+        style: str = None,
+        gender: str = None,
+        age_range: str = None,
         reference_images: Optional[list[str]] = None
     ) -> Dict:
         """
@@ -175,41 +175,37 @@ class BananaProClient(AIImageClientBase):
         Returns:
             包含图片URL的字典
         """
-        # 构建详细的提示词
-        if reference_images:
-            # 以图生图模式
-            prompt = f"""请参考上传的图片，生成一个{gender}的{style}头像图片。
-
-人物特征：
-- 年龄：{age_range}
-- 性别：{gender}
-- 描述：{description}
-
-要求：
-1. 保持参考图片的人物特征和风格
-2. 人物面部清晰，五官端正
-3. 光线均匀，背景简洁
-4. 适合用作数字人形象
-5. 正面或略带角度的视角
-6. 表情自然，有亲和力
-
-请只生成图片，不要添加任何文字说明。"""
-        else:
-            # 文生图模式
-            prompt = f"""请生成一个{gender}的{style}头像图片。
-
-人物特征：
-- 年龄：{age_range}
-- 性别：{gender}
-- 描述：{description}
-
-要求：
-1. 人物面部清晰，五官端正
-2. 光线均匀，背景简洁
-3. 适合用作数字人形象
-4. 正面或略带角度的视角
-5. 表情自然，有亲和力
-
-请只生成图片，不要添加任何文字说明。"""
+        prompt = self._build_asset_image_prompt(description, style, gender, age_range, bool(reference_images))
 
         return await self.generate_image_with_metadata(prompt, reference_images)
+
+    @staticmethod
+    def _build_asset_image_prompt(
+        description: str,
+        style: Optional[str] = None,
+        gender: Optional[str] = None,
+        age_range: Optional[str] = None,
+        has_reference_images: bool = False,
+    ) -> str:
+        constraints = []
+        if style:
+            constraints.append(f"- 风格：{style}")
+        if gender:
+            constraints.append(f"- 性别：{gender}")
+        if age_range:
+            constraints.append(f"- 年龄：{age_range}")
+        constraint_text = "\n".join(constraints)
+        if constraint_text:
+            constraint_text = f"\n补充约束：\n{constraint_text}"
+        reference_line = "请参考上传的图片，但以用户提示词为主。" if has_reference_images else "只生成用户提示词中明确要求的主体。"
+        return f"""请根据用户提示词生成一张图片。
+{reference_line}
+{constraint_text}
+
+用户提示词：
+{description}
+
+要求：
+- 严格遵循用户提示词，不要添加未被要求的主体或角色。
+- 如果用户要求文字，请按用户原文绘制；否则不要添加无关文字、水印或 UI。
+- 保持画面清晰、构图完整、主体明确。"""
