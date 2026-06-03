@@ -24,6 +24,12 @@ cp .env.example .env
 docker compose up -d
 ```
 
+数据库结构文件位于 `database/schema.sql`。首次创建 PostgreSQL 数据卷时，Compose 会自动导入该 schema；如果你使用外部数据库，也可以手动导入：
+
+```bash
+psql "$DATABASE_URL" -f database/schema.sql
+```
+
 启动后访问：
 - 前端：`http://localhost:3000`
 - 后端：`http://localhost:3001`
@@ -91,6 +97,7 @@ npm run dev
 .
 ├── frontend/          # React 前端
 ├── backend/           # FastAPI + Celery 后端
+├── database/          # PostgreSQL schema
 ├── docs/              # 业务与接口文档
 ├── docker-compose.yml
 └── AGENTS.md

@@ -24,6 +24,12 @@ cp .env.example .env
 docker compose up -d
 ```
 
+The database schema is available at `database/schema.sql`. Docker Compose imports it automatically when the PostgreSQL volume is created for the first time. If you use an external database, import it manually:
+
+```bash
+psql "$DATABASE_URL" -f database/schema.sql
+```
+
 After startup:
 - Frontend: `http://localhost:3000`
 - Backend: `http://localhost:3001`
@@ -91,6 +97,7 @@ npm run dev
 .
 ├── frontend/          # React frontend
 ├── backend/           # FastAPI + Celery backend
+├── database/          # PostgreSQL schema
 ├── docs/              # product and API docs
 ├── docker-compose.yml
 └── AGENTS.md
